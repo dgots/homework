@@ -16,6 +16,7 @@ import re
 
 
 search_url = "https://findcumt.libsp.com/find/unify/search"
+extend_url="https://findcumt.libsp.com/find/unify/getPItemAndOnShelfCountAndDuxiuImageUrl"
 headers={
 "Host": "findcumt.libsp.com",
 "Connection": "keep-alive",
@@ -40,15 +41,38 @@ headers={
         }
 
 
-# # 获取DATA
+# ##### 主要数据储存
 
 # In[3]:
+
+
+title_list=[]
+isbn_list=[]
+recordId_list=[]
+def addfindings(list1,list2):
+    list1.extend(list2)
+
+
+# ##### 拓展数据储存
+
+# In[4]:
+
+
+imgUrl_list=[]
+onShelfCount_list=[]
+
+
+# # 获取DATA
+
+# ##### 主要搜索DATA
+
+# In[5]:
 
 
 search = input("输入关键字")
 
 
-# In[4]:
+# In[6]:
 
 
 data1 ='{"docCode":[null],"searchFieldContent":"'
@@ -58,53 +82,118 @@ data3 = ',"rows":10,"onlyOnShelf":null,"searchItems":null,"keyWord":[]}'
 data4 = data1+search+data2
 
 
-# In[5]:
-
-
-def getdata(page):
-    return data4+str(page)+data3
-
-
-# # POST请求
-
-# In[6]:
-
-
-book_list=[]
-def addbooks(books):
-    book_list.extend(books)
-
-
 # In[7]:
 
 
-for page in range(1,99999):
-    data=getdata(page)
-    books = requests.post(search_url,data=data,headers=headers)
-    if len(books.text)<5000:
-        break
-    books = books.text
-    finding=re.findall('"title":"(.*?)"',books,re.S)
-    addbooks(finding)
+def getdata(page):
+    data = data4+str(page)+data3
+    data = data.encode("utf-8")
+    return data
 
 
-# # 输出
+# ##### 拓展搜索DATA
 
 # In[8]:
 
 
-book_num = len(book_list)
+edata1=r'{"title":"'
+edata2 = r'","isbn":"'
+edata3 = r'","recordId":'
+edata4 = r'}'
 
 
 # In[9]:
 
 
+def getedata(title_list,isbn_list,recordId_list):
+    for i in range(len(title_list)):
+        title = title_list[i]
+        isbn = isbn_list[i]
+        recordId = recordId_list[2*i]
+        edata = edata1+title+edata2+isbn+edata3+recordId+edata4
+        edata = edata.encode()
+        print(i)
+        yield edata
+getedatas = getedata(title_list,isbn_list,recordId_list)
+
+
+# # POST请求
+
+# #### 获取基本数据
+
+# In[10]:
+
+
+for page in range(1,99999):
+    data=getdata(page)
+    data_to_find = requests.post(search_url,data=data,headers=headers)
+    if len(data_to_find.text)<5000:
+        break
+    data_to_find = data_to_find.text
+    title_findings=re.findall('"title":"(.*?),',data_to_find,re.S)
+    isbn_findings=re.findall('isbn":(.*?),',data_to_find,re.S)
+    recordId_findings = re.findall('recordId":(.*?),"',data_to_find,re.S)
+    addfindings(title_list,title_findings)
+    addfindings(isbn_list,isbn_findings)
+    addfindings(recordId_list,recordId_findings)
+    #print(title_findings)
+
+
+# In[11]:
+
+
+for i in range(len(title_list)):
+    title_list[i] = title_list[i][:-1]
+
+
+# In[12]:
+
+
+for i in range(len(isbn_list)):
+    if isbn_list[i] == 'null':
+        isbn_list[i] = ""
+    else:
+        isbn_list[i] = isbn_list[i][1:-1]
+
+
+# ##### 获取其他数据
+
+# In[13]:
+
+
+for i in range(len(title_list)):
+    edata = next(getedatas)
+    #print(edata)
+    edata_to_find = requests.post(extend_url,data=edata,headers=headers)
+    edata_to_find = edata_to_find.text
+    imgUrl = re.findall('ImageUrl":"(.*?)"',edata_to_find,re.S)
+    onShelfCount = re.findall('onShelfCount":(.*?),"',edata_to_find,re.S)
+    addfindings(imgUrl_list,imgUrl)
+    addfindings(onShelfCount_list,onShelfCount)
+    
+
+
+# # 输出
+
+# In[14]:
+
+
+book_num = len(title_list)
+
+
+# In[15]:
+
+
 print("爬取完成")
-print("共爬取",page-1,"页")
 print("总计",book_num,"本资料")
 for i in range(book_num):
-    print(i+1,book_list[i])
+    print(i+1,title_list[i],"可借数量",onShelfCount_list[i])
 
+
+# # TEST
+
+# # 1339
+# ###### Programming PyTorch for deep learning = PyTorch深度学习编程  \"影印版\".
 
 # In[ ]:
 
