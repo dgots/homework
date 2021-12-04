@@ -112,7 +112,7 @@ def getedata(title_list,isbn_list,recordId_list):
         recordId = recordId_list[2*i]
         edata = edata1+title+edata2+isbn+edata3+recordId+edata4
         edata = edata.encode()
-        print(i)
+        #print(i)
         yield edata
 getedatas = getedata(title_list,isbn_list,recordId_list)
 
@@ -166,28 +166,39 @@ for i in range(len(title_list)):
     #print(edata)
     edata_to_find = requests.post(extend_url,data=edata,headers=headers)
     edata_to_find = edata_to_find.text
-    imgUrl = re.findall('ImageUrl":"(.*?)"',edata_to_find,re.S)
+    imgUrl = re.findall('ImageUrl":(.*?),',edata_to_find,re.S)
     onShelfCount = re.findall('onShelfCount":(.*?),"',edata_to_find,re.S)
     addfindings(imgUrl_list,imgUrl)
     addfindings(onShelfCount_list,onShelfCount)
     
 
 
+# In[14]:
+
+
+for i in range(len(imgUrl_list)):
+    if imgUrl_list[i] != 'null':
+        imgUrl_list[i] = imgUrl_list[i][1:-1]
+    else:
+        imgUrl_list[i] = '此资料暂无封面'
+
+
 # # 输出
 
-# In[14]:
+# In[15]:
 
 
 book_num = len(title_list)
 
 
-# In[15]:
+# In[16]:
 
 
 print("爬取完成")
 print("总计",book_num,"本资料")
 for i in range(book_num):
-    print(i+1,title_list[i],"可借数量",onShelfCount_list[i])
+    print(i+1,title_list[i],"可借数量：",onShelfCount_list[i])
+    print("该资料封面路径为：",imgUrl_list[i])
 
 
 # # TEST
